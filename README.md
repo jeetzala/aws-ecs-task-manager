@@ -21,7 +21,7 @@ The application was:
 
 ## 🏗️ Architecture Diagram
 
-![Architecture](screenshots/ecs-cluster-overview.png)
+![Architecture](screenshots/architechture-diagram.png)
 
 ---
 
