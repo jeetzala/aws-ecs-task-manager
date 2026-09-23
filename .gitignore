@@ -15,3 +15,8 @@ codebuild-policy.json
 codepipeline-trust-policy.json
 codepipeline-policy.json
 create-pipeline.json
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/crash.log
