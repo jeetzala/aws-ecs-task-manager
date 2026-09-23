@@ -1,8 +1,8 @@
 # ☁️ AWS ECS Fargate Task Manager
 
-This project demonstrates the design and deployment of a containerized application on **Amazon Web Services (AWS)** using **Amazon ECS Fargate, Docker, Amazon ECR, an Application Load Balancer (ALB), AWS Secrets Manager, IAM, Amazon CloudWatch, AWS CodePipeline, AWS CodeBuild, AWS CodeConnections, Amazon S3, and Terraform**.
+This project demonstrates the design and deployment of a containerized application on **Amazon Web Services (AWS)** using **Docker, Amazon ECR, Amazon ECS Fargate, an Application Load Balancer (ALB), AWS Secrets Manager, IAM, Amazon CloudWatch, AWS CodePipeline, AWS CodeBuild, AWS CodeConnections, Amazon S3, and Terraform**.
 
-The application is a Python Flask web application containerized with Docker and deployed to ECS Fargate behind an Application Load Balancer.
+The application is a Python Flask web application containerized with Docker and deployed to **Amazon ECS Fargate** behind an Application Load Balancer.
 
 The project was built and validated in the **AWS US East (N. Virginia) Region (`us-east-1`)**.
 
@@ -14,9 +14,9 @@ The project was built and validated in the **AWS US East (N. Virginia) Region (`
 
 ✅ Docker Containerization
 
-✅ Docker Health Check
+✅ Non-Root Docker User
 
-✅ Non-Root Container User
+✅ Docker Health Check
 
 ✅ Amazon ECR Container Registry
 
@@ -36,11 +36,13 @@ The project was built and validated in the **AWS US East (N. Virginia) Region (`
 
 ✅ GitHub Integration
 
+✅ AWS CodeConnections
+
 ✅ AWS CodePipeline
 
 ✅ AWS CodeBuild
 
-✅ Automated Docker Build & Test
+✅ Automated Docker Build & Health Test
 
 ✅ Automated ECR Image Push
 
@@ -60,9 +62,9 @@ The project was built and validated in the **AWS US East (N. Virginia) Region (`
 
 ## Architecture Diagram
 
-![AWS ECS Fargate Architecture](screenshots/architechture-diagram.png)
+![AWS ECS Fargate Architecture](screenshots/architecture-diagram.png)
 
-The application and deployment infrastructure is organized into the following flow:
+The application and deployment infrastructure follows this flow:
 
 ```text
                          GitHub
@@ -95,7 +97,7 @@ The application and deployment infrastructure is organized into the following fl
               Container :5000
 ```
 
-Supporting services provide security and observability:
+Supporting AWS services provide security and observability:
 
 ```text
 ECS Fargate Task
@@ -110,7 +112,7 @@ ECS Fargate Task
               └── /aws/ecs/task-manager
 ```
 
-Terraform is used to manage the deployed infrastructure as code.
+Terraform is used to represent and manage the deployed infrastructure as code.
 
 ---
 
@@ -122,7 +124,7 @@ Terraform is used to manage the deployed infrastructure as code.
 * `/` application endpoint
 * `/health` health endpoint
 * Gunicorn
-* Non-root Docker user
+* Non-root container user
 
 ### Container Platform
 
@@ -168,19 +170,19 @@ Terraform is used to manage the deployed infrastructure as code.
 
 # 🧰 AWS Services Used
 
-* Amazon VPC
 * Amazon ECS
 * AWS Fargate
 * Amazon ECR
 * Application Load Balancer
-* Amazon CloudWatch
+* Amazon VPC
+* Security Groups
 * AWS Secrets Manager
 * AWS IAM
+* Amazon CloudWatch
 * AWS CodePipeline
 * AWS CodeBuild
 * AWS CodeConnections
 * Amazon S3
-* Security Groups
 
 ### Infrastructure as Code
 
@@ -190,7 +192,7 @@ Terraform is used to manage the deployed infrastructure as code.
 
 # 🔐 Security Architecture
 
-The application is exposed through the ALB while the ECS container port is restricted to traffic from the ALB security group.
+The application is publicly accessible through the Application Load Balancer while the container application port is restricted to ALB traffic.
 
 ```text
 Internet
@@ -199,7 +201,6 @@ Internet
    ▼
 ALB Security Group
    │
-   │ HTTP :80
    ▼
 Application Load Balancer
    │
@@ -227,15 +228,15 @@ TCP :5000
 Source: ALB Security Group
 ```
 
-This prevents direct Internet access to the container application port.
+This prevents direct Internet access to the application container port.
 
-The ECS task still has outbound access required for container operation and AWS service communication.
+The ECS task uses outbound access for communication with required AWS services and external endpoints.
 
 ---
 
 # 🔑 Secrets Management
 
-The application uses **AWS Secrets Manager** rather than hard-coding application credentials.
+The application uses **AWS Secrets Manager** instead of storing the application token in source code.
 
 Secret:
 
@@ -243,15 +244,15 @@ Secret:
 task-manager/app-token
 ```
 
-The secret is injected into the ECS container as:
+The value is injected into the ECS container as:
 
 ```text
 TASK_MANAGER_TOKEN
 ```
 
-The application checks whether the variable is present through the `/health` endpoint without exposing its value.
+The application verifies whether the variable is present through the `/health` endpoint without exposing the secret value.
 
-Example:
+Example response:
 
 ```json
 {
@@ -268,21 +269,21 @@ The secret value is not stored in:
 * ECS task-definition template
 * `buildspec.yml`
 
-The ECS task execution role is granted:
+The ECS task execution role has the required:
 
 ```text
 secretsmanager:GetSecretValue
 ```
 
-only for the required application secret.
+permission scoped to the specific application secret.
 
 ---
 
 # 📊 CloudWatch Logging
 
-CloudWatch Logs is used for ECS container/application logging.
+CloudWatch Logs is used for ECS container and application logging.
 
-Log group:
+Log Group:
 
 ```text
 /aws/ecs/task-manager
@@ -294,23 +295,13 @@ Retention:
 7 days
 ```
 
-The ECS task definition uses the AWS Logs driver:
-
-```text
-awslogs
-```
-
-with the stream prefix:
-
-```text
-ecs
-```
+The ECS task definition uses the AWS Logs driver and sends container logs to CloudWatch.
 
 ---
 
 # 🔄 CI/CD Pipeline
 
-The project includes a GitHub-to-ECS deployment pipeline.
+The project includes an automated GitHub-to-ECS deployment pipeline.
 
 ```text
 GitHub
@@ -325,7 +316,7 @@ AWS CodePipeline
 AWS CodeBuild
    │
    ├── Docker build
-   ├── Local health check
+   ├── Local health test
    ├── ECR image push
    ├── ECS task-definition registration
    └── ECS service update
@@ -337,7 +328,7 @@ AWS CodeBuild
         Application ALB
 ```
 
-### CodePipeline
+## CodePipeline
 
 Pipeline:
 
@@ -345,10 +336,9 @@ Pipeline:
 task-manager-pipeline
 ```
 
-Source:
+Source repository:
 
 ```text
-GitHub
 jeetzala/aws-ecs-task-manager
 ```
 
@@ -358,7 +348,9 @@ Branch:
 main
 ```
 
-### CodeBuild
+The GitHub connection is configured through AWS CodeConnections.
+
+## CodeBuild
 
 Build project:
 
@@ -366,16 +358,16 @@ Build project:
 task-manager-build
 ```
 
-The build environment uses Docker privileged mode so the pipeline can build the application image.
+The CodeBuild environment uses Docker privileged mode to build the application image.
 
 The build process:
 
-1. Authenticate with Amazon ECR
+1. Authenticate to Amazon ECR
 2. Build the Docker image
-3. Run the image locally inside CodeBuild
-4. Test `/health`
+3. Start the image locally inside CodeBuild
+4. Test the `/health` endpoint
 5. Stop the test container
-6. Push the image to ECR
+6. Push the image to Amazon ECR
 7. Render the ECS task definition
 8. Register a new ECS task-definition revision
 9. Update the ECS service
@@ -385,26 +377,26 @@ The build process:
 
 # 🐳 Docker Image Versioning
 
-The initial images were pushed manually during project development:
+Images were initially pushed manually during development:
 
 ```text
 v1.0.0
 v1.0.1
 ```
 
-The automated pipeline generates versioned image tags using the CodeBuild build number:
+The automated CodeBuild pipeline creates versioned image tags based on the CodeBuild build number:
 
 ```text
 v2.0.x
 ```
 
-The resulting image version is also passed to ECS through:
+The image version is also passed to ECS through:
 
 ```text
 APP_VERSION
 ```
 
-An Amazon ECR lifecycle policy keeps only the latest three tagged images matching the `v` prefix.
+Amazon ECR uses a lifecycle policy that keeps the latest three tagged images matching the `v` prefix.
 
 ---
 
@@ -436,7 +428,7 @@ The service is configured with one desired running task for the portfolio enviro
 
 ### Task Definition
 
-The application task definition includes:
+The task definition includes:
 
 ```text
 Container Image
@@ -446,6 +438,12 @@ Environment Variables
 Secrets Manager Injection
 Container Health Check
 CloudWatch Logging
+```
+
+The active deployment reached:
+
+```text
+task-manager:6
 ```
 
 ---
@@ -510,15 +508,17 @@ Old Target Drains
 Old Task Stops
 ```
 
-The ECS service uses a deployment circuit breaker with rollback enabled.
+The service uses an ECS deployment circuit breaker with rollback enabled.
 
-During testing, the new task became healthy while the previous target entered:
+During validation, the new task became healthy while the previous target entered:
 
 ```text
 draining
 ```
 
-This verified normal ECS rolling-deployment behavior.
+The new task then became the active running task.
+
+This validated the ECS rolling deployment process.
 
 ---
 
@@ -544,7 +544,7 @@ aws-ecs-task-manager/
 │   └── .terraform.lock.hcl
 │
 └── screenshots/
-    ├── architechture-diagram.png
+    ├── architecture-diagram.png
     ├── alb-created.png
     ├── docker-image-built.png
     ├── ecr-image-pushed.png
@@ -559,7 +559,7 @@ aws-ecs-task-manager/
     └── task-definition-created.png
 ```
 
-Terraform state files and the `.terraform` working directory are intentionally excluded from the repository.
+Terraform state files and the `.terraform` working directory are excluded from the repository.
 
 ---
 
@@ -577,7 +577,7 @@ The Application Load Balancer provides the public HTTP entry point for the ECS a
 
 ![Local Container Running](screenshots/local-container-running.png)
 
-The Flask application was first validated locally inside a Docker container.
+The Flask application was validated locally inside a Docker container.
 
 ---
 
@@ -591,7 +591,7 @@ The Docker image was built successfully using the project Dockerfile.
 
 ## 📦 4. ECR Repository Created
 
-![ECR Repository](screenshots/ecr-repository-created.png)
+![ECR Repository Created](screenshots/ecr-repository-created.png)
 
 The `task-manager` container repository was created in Amazon ECR.
 
@@ -617,7 +617,7 @@ The application image is available in the ECR repository.
 
 ![ECS Cluster Created](screenshots/ecs-cluster-created.png)
 
-The ECS Fargate cluster was created for the application.
+The ECS cluster was created for the Fargate application.
 
 ---
 
@@ -631,9 +631,9 @@ The ECS cluster and service configuration can be reviewed from the ECS console.
 
 ## 📋 9. Task Definition
 
-![Task Definition](screenshots/task-definition-created.png)
+![Task Definition Created](screenshots/task-definition-created.png)
 
-The ECS task definition configures the container image, resources, networking, health check, logging, and runtime environment.
+The task definition configures the container image, CPU, memory, port mapping, health check, logging, and runtime configuration.
 
 ---
 
@@ -704,9 +704,9 @@ IAM Secret Access Policy
 
 Terraform manages the infrastructure configuration.
 
-The GitHub → CodePipeline → CodeBuild workflow manages changing ECS task-definition revisions generated from application deployments.
+GitHub → CodePipeline → CodeBuild manages the changing ECS task-definition revisions generated during application deployments.
 
-The ECS service therefore ignores task-definition changes so Terraform does not overwrite the revision deployed by CI/CD.
+The ECS service therefore ignores task-definition changes in Terraform so the CI/CD pipeline can deploy new application revisions without Terraform attempting to replace them.
 
 ### Terraform Validation
 
@@ -724,14 +724,7 @@ Terraform returned:
 Success! The configuration is valid.
 ```
 
-The final infrastructure plan showed:
-
-```text
-No changes.
-Your infrastructure matches the configuration.
-```
-
-The plan contained:
+The final infrastructure plan showed no resource actions:
 
 ```text
 0 to add
@@ -739,7 +732,9 @@ The plan contained:
 0 to destroy
 ```
 
-This confirms that the Terraform configuration matches the imported live infrastructure without proposing resource creation, modification, or destruction.
+The plan only showed new Terraform output values that could be saved to state; it did not propose creating, modifying, or destroying AWS infrastructure.
+
+This confirms that the Terraform configuration matches the imported live infrastructure.
 
 ---
 
@@ -747,14 +742,14 @@ This confirms that the Terraform configuration matches the imported live infrast
 
 ## ✔️ Step 1 — Create the Flask Application
 
-Created a lightweight Python Flask application with:
+Created a Python Flask application with:
 
 ```text
 /
 /health
 ```
 
-The `/health` endpoint provides application health information and confirms that the runtime secret has been injected.
+The `/health` endpoint reports application health and confirms that the runtime secret has been injected.
 
 ---
 
@@ -790,21 +785,21 @@ Application accessible
 Docker health → healthy
 ```
 
+The secret-aware application was also tested locally using a temporary test environment variable.
+
 ---
 
 ## ✔️ Step 4 — Push the Image to Amazon ECR
 
-Created:
+Created the ECR repository:
 
 ```text
 task-manager
 ```
 
-in Amazon ECR.
-
 Images were pushed using versioned tags.
 
-The repository also includes a lifecycle policy to retain only the latest three tagged images matching the `v` prefix.
+The repository includes an image lifecycle policy to limit retained tagged images.
 
 ---
 
@@ -822,7 +817,7 @@ HTTP Listener
 Security Groups
 ```
 
-The ECS task runs with:
+The Fargate task runs with:
 
 ```text
 256 CPU
@@ -873,13 +868,7 @@ The secret is injected into the container as:
 TASK_MANAGER_TOKEN
 ```
 
-The ECS execution role receives only the required:
-
-```text
-secretsmanager:GetSecretValue
-```
-
-permission for the application secret.
+The secret value remains outside the application source code and GitHub repository.
 
 ---
 
@@ -901,7 +890,7 @@ The ECS container sends application logs to CloudWatch.
 
 ---
 
-## ✔️ Step 9 — Configure CI/CD
+## ✔️ Step 9 — Build the CI/CD Pipeline
 
 Connected:
 
@@ -910,27 +899,27 @@ GitHub
    ↓
 AWS CodeConnections
    ↓
-CodePipeline
+AWS CodePipeline
    ↓
-CodeBuild
+AWS CodeBuild
 ```
 
-The pipeline automatically:
+The pipeline automates:
 
 ```text
-Builds Docker image
-Runs health test
-Pushes image to ECR
-Creates ECS task definition revision
-Updates ECS service
-Waits for stable deployment
+Docker build
+Health test
+ECR image push
+ECS task-definition registration
+ECS service update
+ECS service stabilization
 ```
 
 ---
 
 ## ✔️ Step 10 — Validate Rolling Deployment
 
-The ECS service was successfully updated through CI/CD.
+The ECS service was successfully updated through the CI/CD pipeline.
 
 The new task became:
 
@@ -939,19 +928,19 @@ RUNNING
 HEALTHY
 ```
 
-The ALB target became:
+The new ALB target became:
 
 ```text
 healthy
 ```
 
-The previous task entered:
+The previous target entered:
 
 ```text
 draining
 ```
 
-and was subsequently removed.
+The previous task was then removed after the new deployment became healthy.
 
 ---
 
@@ -973,7 +962,7 @@ terraform plan
 
 ✅ Infrastructure drift checked
 
-✅ No resources proposed for creation, modification, or destruction
+✅ No infrastructure resources proposed for creation, modification, or destruction
 
 ---
 
@@ -993,12 +982,12 @@ terraform plan
 | Secrets Manager           | ✅ Verified |
 | IAM Least Privilege       | ✅ Verified |
 | CloudWatch Logs           | ✅ Verified |
-| CodeConnections           | ✅ Verified |
-| CodePipeline              | ✅ Verified |
-| CodeBuild                 | ✅ Verified |
+| AWS CodeConnections       | ✅ Verified |
+| AWS CodePipeline          | ✅ Verified |
+| AWS CodeBuild             | ✅ Verified |
 | Automated ECR Push        | ✅ Verified |
 | Automated ECS Deployment  | ✅ Verified |
-| Rolling Deployment        | ✅ Verified |
+| ECS Rolling Deployment    | ✅ Verified |
 | Terraform Configuration   | ✅ Verified |
 | Terraform Infrastructure  | ✅ Verified |
 | End-to-End Application    | ✅ Verified |
@@ -1010,29 +999,29 @@ terraform plan
 * Building and containerizing Python applications
 * Writing Dockerfiles for cloud deployment
 * Running and validating Docker containers locally
-* Using non-root container users
+* Using non-root Docker users
 * Implementing Docker health checks
-* Managing Docker images with Amazon ECR
+* Managing container images with Amazon ECR
 * Deploying containers with Amazon ECS Fargate
 * Configuring Application Load Balancers
 * Configuring ECS target groups and health checks
 * Implementing restricted Security Group communication
 * Managing application secrets with AWS Secrets Manager
 * Applying IAM least-privilege principles
-* Sending container logs to CloudWatch
+* Sending ECS logs to CloudWatch
 * Building GitHub-to-ECS CI/CD pipelines
 * Using AWS CodePipeline and CodeBuild
-* Automating Docker builds and ECR image publishing
+* Automating Docker image builds
+* Automating ECR image publishing
 * Automating ECS task-definition registration
-* Managing ECS rolling deployments
+* Performing ECS rolling deployments
 * Troubleshooting CodePipeline and CodeBuild IAM permissions
 * Using AWS CLI for infrastructure management
 * Importing existing AWS resources into Terraform
 * Using Terraform variables and outputs
-* Managing infrastructure as code
-* Validating infrastructure using `terraform plan`
+* Detecting infrastructure drift
 * Separating infrastructure management from application deployment
-* Documenting cloud infrastructure for a technical portfolio
+* Documenting AWS infrastructure for a technical portfolio
 
 ---
 
@@ -1043,12 +1032,12 @@ terraform plan
 * Multiple ECS tasks
 * ECS Service Auto Scaling
 * Multi-AZ task placement
-* Capacity and load testing
+* Load testing
 
 ### Security
 
 * HTTPS with ACM
-* HTTPS listener on the ALB
+* HTTPS listener on ALB
 * Route 53 DNS
 * AWS WAF
 * Further IAM policy refinement
@@ -1057,23 +1046,24 @@ terraform plan
 ### CI/CD
 
 * Automated unit tests
-* Automated integration tests
+* Integration tests
 * Deployment approval stage
-* Blue/green deployment strategy
+* Blue/green deployment
 * Automated rollback testing
 
 ### Terraform
 
 * Reusable Terraform modules
-* Separate environment configurations
+* Environment-specific configurations
 * Remote Terraform state
 * Terraform CI validation
-* Terraform plan checks in pull requests
+* Pull-request Terraform plan checks
+* Terraform management of the remaining CI/CD resources
 
 ### Observability
 
 * CloudWatch dashboard
-* Application metrics
+* Application-level metrics
 * ECS alarms
 * ALB error alarms
 * Centralized operational dashboards
