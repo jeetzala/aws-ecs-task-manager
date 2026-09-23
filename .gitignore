@@ -12,3 +12,5 @@ task-definition-rendered.json
 ecr-lifecycle-policy.json
 codebuild-trust-policy.json
 codebuild-policy.json
+codepipeline-trust-policy.json
+codepipeline-policy.json
