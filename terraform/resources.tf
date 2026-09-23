@@ -6,7 +6,7 @@ locals {
 }
 
 data "aws_ecs_task_definition" "current" {
-  task_definition = "task-manager:4"
+  task_definition = "task-manager"
 }
 
 data "aws_iam_role" "ecs_execution" {
@@ -215,11 +215,4 @@ resource "aws_iam_role_policy" "ecs_secret_access" {
     ]
   })
 }
-
-
-
-
-
-
-
 
