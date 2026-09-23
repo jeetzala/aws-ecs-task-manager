@@ -10,3 +10,5 @@ task-definition.json
 task-definition-v3.json
 task-definition-rendered.json
 ecr-lifecycle-policy.json
+codebuild-trust-policy.json
+codebuild-policy.json
