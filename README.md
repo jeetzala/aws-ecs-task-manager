@@ -62,7 +62,7 @@ The project was built and validated in the **AWS US East (N. Virginia) Region (`
 
 ## Architecture Diagram
 
-![AWS ECS Fargate Architecture](screenshots/architechture-diagram.png)
+![AWS ECS Fargate Architecture](screenshots/architecture-diagram.png)
 
 The application and deployment infrastructure follows this flow:
 
