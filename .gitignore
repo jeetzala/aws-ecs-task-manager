@@ -14,3 +14,4 @@ codebuild-trust-policy.json
 codebuild-policy.json
 codepipeline-trust-policy.json
 codepipeline-policy.json
+create-pipeline.json
