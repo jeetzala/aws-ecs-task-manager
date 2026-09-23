@@ -1,0 +1,11 @@
+.git
+.gitignore
+screenshots/
+app.txt
+Dockerfile.txt
+README.md.txt
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env

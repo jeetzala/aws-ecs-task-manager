@@ -1,13 +1,20 @@
-from flask import Flask
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-@app.route('/')
+
+@app.route("/")
 def home():
     return """
     <h1>AWS ECS Task Manager</h1>
     <p>Containerized Application Running on ECS Fargate</p>
     """
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+
+@app.route("/health")
+def health():
+    return jsonify(status="healthy"), 200
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
