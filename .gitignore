@@ -5,3 +5,8 @@ venv/
 .env
 *.log
 .DS_Store
+secrets-policy.json
+task-definition.json
+task-definition-v3.json
+task-definition-rendered.json
+ecr-lifecycle-policy.json

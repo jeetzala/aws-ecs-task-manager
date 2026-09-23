@@ -1,0 +1,40 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "us-east-1"
+    AWS_ACCOUNT_ID: "649170435174"
+    ECR_REPOSITORY: "task-manager"
+    ECS_CLUSTER: "task-manager-cluster-v2"
+    ECS_SERVICE: "task-manager-service"
+    TASK_FAMILY: "task-manager"
+
+phases:
+  pre_build:
+    commands:
+      - set -e
+      - export IMAGE_TAG="v2.0.${CODEBUILD_BUILD_NUMBER}"
+      - export REPOSITORY_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY}"
+      - echo "Building ${REPOSITORY_URI}:${IMAGE_TAG}"
+      - aws ecr get-login-password --region "${AWS_DEFAULT_REGION}" | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+
+  build:
+    commands:
+      - docker build -t "${REPOSITORY_URI}:${IMAGE_TAG}" .
+      - docker run -d --name task-manager-test -p 5000:5000 "${REPOSITORY_URI}:${IMAGE_TAG}"
+      - for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:5000/health && break || sleep 3; done
+      - curl -fsS http://127.0.0.1:5000/health
+      - docker stop task-manager-test
+      - docker rm task-manager-test
+      - docker push "${REPOSITORY_URI}:${IMAGE_TAG}"
+      - sed "s|IMAGE_PLACEHOLDER|${REPOSITORY_URI}:${IMAGE_TAG}|g; s|BUILD_VERSION_PLACEHOLDER|${IMAGE_TAG}|g" task-definition-template.json > task-definition-rendered.json
+      - aws ecs register-task-definition --cli-input-json file://task-definition-rendered.json --region "${AWS_DEFAULT_REGION}"
+      - export TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition "${TASK_FAMILY}" --region "${AWS_DEFAULT_REGION}" --query "taskDefinition.taskDefinitionArn" --output text)
+      - aws ecs update-service --cluster "${ECS_CLUSTER}" --service "${ECS_SERVICE}" --task-definition "${TASK_DEFINITION_ARN}" --region "${AWS_DEFAULT_REGION}"
+
+  post_build:
+    commands:
+      - echo "Deployment triggered for ${REPOSITORY_URI}:${IMAGE_TAG}"
+      - echo "Waiting for ECS service to stabilize..."
+      - aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}" --region "${AWS_DEFAULT_REGION}"
+      - echo "ECS deployment completed successfully."

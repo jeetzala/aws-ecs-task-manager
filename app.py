@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify
 
 app = Flask(__name__)
@@ -13,7 +15,12 @@ def home():
 
 @app.route("/health")
 def health():
-    return jsonify(status="healthy"), 200
+    secret_loaded = bool(os.getenv("TASK_MANAGER_TOKEN"))
+
+    return jsonify(
+        status="healthy",
+        secret_loaded=secret_loaded
+    ), 200
 
 
 if __name__ == "__main__":
