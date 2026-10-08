@@ -4,7 +4,7 @@ This project demonstrates the design and deployment of a containerized applicati
 
 The application is a Python Flask web application containerized with Docker and deployed to **Amazon ECS Fargate** behind an Application Load Balancer.
 
-The project was built and validated in the **AWS US East (N. Virginia) Region (`us-east-1`)**.
+The project was built and validated in the **AWS US East (N. Virginia) Region (`us-east-1`)**. The AWS infrastructure was subsequently destroyed after validation to avoid ongoing resource usage and costs.
 
 ---
 
@@ -69,6 +69,7 @@ The application and deployment infrastructure follows this flow:
 ```text
                          GitHub
                             │
+                            │ CodeConnections
                             ▼
                     AWS CodePipeline
                             │
@@ -81,6 +82,9 @@ The application and deployment infrastructure follows this flow:
                   │
                   ▼
               Amazon ECR
+                  │
+                  ▼
+        CodePipeline Deploy Stage
                   │
                   ▼
           ECS Task Definition
@@ -112,7 +116,7 @@ ECS Fargate Task
               └── /aws/ecs/task-manager
 ```
 
-Terraform is used to represent and manage the deployed infrastructure as code.
+Terraform is used to represent and manage the core application infrastructure as code.
 
 ---
 
@@ -192,7 +196,7 @@ Terraform is used to represent and manage the deployed infrastructure as code.
 
 # 🔐 Security Architecture
 
-The application is publicly accessible through the Application Load Balancer while the container application port is restricted to ALB traffic.
+The application was publicly accessible through the Application Load Balancer during validation, while the container application port was restricted to ALB traffic.
 
 ```text
 Internet
@@ -269,7 +273,7 @@ The secret value is not stored in:
 * ECS task-definition template
 * `buildspec.yml`
 
-The ECS task execution role has the required:
+The ECS task execution role was granted the required:
 
 ```text
 secretsmanager:GetSecretValue
@@ -317,15 +321,19 @@ AWS CodeBuild
    │
    ├── Docker build
    ├── Local health test
-   ├── ECR image push
-   ├── ECS task-definition registration
-   └── ECS service update
+   └── ECR image push
              │
              ▼
-        ECS Fargate
+      CodePipeline Deploy Stage
              │
-             ▼
-        Application ALB
+             ├── ECS task-definition registration
+             └── ECS service update
+                      │
+                      ▼
+                 ECS Fargate
+                      │
+                      ▼
+                 Application ALB
 ```
 
 ## CodePipeline
@@ -368,10 +376,13 @@ The build process:
 4. Test the `/health` endpoint
 5. Stop the test container
 6. Push the image to Amazon ECR
-7. Render the ECS task definition
-8. Register a new ECS task-definition revision
-9. Update the ECS service
-10. Wait for the ECS service to become stable
+
+The subsequent CodePipeline deployment stage handles:
+
+7. Rendering and deploying the ECS task definition
+8. Registering a new ECS task-definition revision
+9. Updating the ECS service
+10. Waiting for the ECS service to become stable
 
 ---
 
@@ -402,7 +413,7 @@ Amazon ECR uses a lifecycle policy that keeps the latest three tagged images mat
 
 # 🚀 ECS Fargate Deployment
 
-The application runs on:
+The application was deployed on:
 
 ```text
 ECS Cluster:
@@ -424,7 +435,7 @@ Container Port:
 5000
 ```
 
-The service is configured with one desired running task for the portfolio environment.
+The service was configured with one desired running task for the portfolio validation environment.
 
 ### Task Definition
 
@@ -440,7 +451,7 @@ Container Health Check
 CloudWatch Logging
 ```
 
-The active deployment reached:
+The final validated deployment used:
 
 ```text
 task-manager:6
@@ -450,7 +461,7 @@ task-manager:6
 
 # ❤️ Health Checks
 
-Health is validated at multiple layers:
+Health was validated at multiple layers:
 
 ```text
 Docker HEALTHCHECK
@@ -474,7 +485,7 @@ Path: /health
 Expected Code: 200
 ```
 
-The final deployed application returned:
+During final validation, the deployed application returned:
 
 ```text
 status: healthy
@@ -569,7 +580,7 @@ Terraform state files and the `.terraform` working directory are excluded from t
 
 ![Application Load Balancer](screenshots/alb-created.png)
 
-The Application Load Balancer provides the public HTTP entry point for the ECS application.
+The Application Load Balancer provided the public HTTP entry point for the ECS application during validation.
 
 ---
 
@@ -609,7 +620,7 @@ The Docker image was successfully pushed to Amazon ECR.
 
 ![ECR Image Visible](screenshots/ecr-image-visible.png)
 
-The application image is available in the ECR repository.
+The application image was available in the ECR repository during validation.
 
 ---
 
@@ -625,7 +636,7 @@ The ECS cluster was created for the Fargate application.
 
 ![ECS Cluster Overview](screenshots/ecs-cluster-overview.png)
 
-The ECS cluster and service configuration can be reviewed from the ECS console.
+The ECS cluster and service configuration were reviewed from the ECS console.
 
 ---
 
@@ -641,7 +652,7 @@ The task definition configures the container image, CPU, memory, port mapping, h
 
 ![ECS Service Running](screenshots/ecs-service-running.png)
 
-The ECS service maintains the desired running task and is connected to the ALB target group.
+The ECS service maintained the desired running task and was connected to the ALB target group during validation.
 
 ---
 
@@ -649,7 +660,7 @@ The ECS service maintains the desired running task and is connected to the ALB t
 
 ![ECS Task Running](screenshots/ecs-task-running.png)
 
-The Fargate task was verified as running and healthy.
+The Fargate task was verified as running and healthy during validation.
 
 ---
 
@@ -657,7 +668,9 @@ The Fargate task was verified as running and healthy.
 
 ![Live Application](screenshots/ecs-live-application.png)
 
-The application is publicly accessible through the Application Load Balancer.
+The application was successfully accessed through the Application Load Balancer during final validation.
+
+The AWS infrastructure was subsequently destroyed after testing.
 
 ---
 
@@ -702,9 +715,9 @@ IAM Secret Access Policy
 
 ### Terraform and CI/CD Separation
 
-Terraform manages the infrastructure configuration.
+Terraform manages the core application infrastructure.
 
-GitHub → CodePipeline → CodeBuild manages the changing ECS task-definition revisions generated during application deployments.
+GitHub → CodePipeline → CodeBuild → CodePipeline Deploy manages the changing application image and ECS task-definition revisions generated during application deployments.
 
 The ECS service therefore ignores task-definition changes in Terraform so the CI/CD pipeline can deploy new application revisions without Terraform attempting to replace them.
 
@@ -734,7 +747,7 @@ The final infrastructure plan showed no resource actions:
 
 The plan only showed new Terraform output values that could be saved to state; it did not propose creating, modifying, or destroying AWS infrastructure.
 
-This confirms that the Terraform configuration matches the imported live infrastructure.
+This confirmed that the Terraform configuration matched the imported infrastructure at the time of validation.
 
 ---
 
@@ -914,6 +927,8 @@ ECS task-definition registration
 ECS service update
 ECS service stabilization
 ```
+
+The deployment stages are handled by CodePipeline using the ECS deployment configuration after the CodeBuild stage completes successfully.
 
 ---
 
