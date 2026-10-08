@@ -84,9 +84,6 @@ The application and deployment infrastructure follows this flow:
               Amazon ECR
                   │
                   ▼
-        CodePipeline Deploy Stage
-                  │
-                  ▼
           ECS Task Definition
                   │
                   ▼
@@ -273,7 +270,7 @@ The secret value is not stored in:
 * ECS task-definition template
 * `buildspec.yml`
 
-The ECS task execution role was granted the required:
+The ECS task execution role has the required:
 
 ```text
 secretsmanager:GetSecretValue
@@ -321,19 +318,17 @@ AWS CodeBuild
    │
    ├── Docker build
    ├── Local health test
-   └── ECR image push
+   ├── ECR image push
+   ├── ECS task-definition rendering
+   ├── ECS task-definition registration
+   ├── ECS service update
+   └── ECS service stabilization
              │
              ▼
-      CodePipeline Deploy Stage
+        ECS Fargate
              │
-             ├── ECS task-definition registration
-             └── ECS service update
-                      │
-                      ▼
-                 ECS Fargate
-                      │
-                      ▼
-                 Application ALB
+             ▼
+        Application ALB
 ```
 
 ## CodePipeline
@@ -376,13 +371,10 @@ The build process:
 4. Test the `/health` endpoint
 5. Stop the test container
 6. Push the image to Amazon ECR
-
-The subsequent CodePipeline deployment stage handles:
-
-7. Rendering and deploying the ECS task definition
-8. Registering a new ECS task-definition revision
-9. Updating the ECS service
-10. Waiting for the ECS service to become stable
+7. Render the ECS task definition with the new image and build version
+8. Register a new ECS task-definition revision
+9. Update the ECS service
+10. Wait for the ECS service to become stable
 
 ---
 
@@ -717,7 +709,7 @@ IAM Secret Access Policy
 
 Terraform manages the core application infrastructure.
 
-GitHub → CodePipeline → CodeBuild → CodePipeline Deploy manages the changing application image and ECS task-definition revisions generated during application deployments.
+GitHub → CodePipeline → CodeBuild manages the application image build and the changing ECS task-definition revisions generated during application deployments.
 
 The ECS service therefore ignores task-definition changes in Terraform so the CI/CD pipeline can deploy new application revisions without Terraform attempting to replace them.
 
@@ -923,12 +915,13 @@ The pipeline automates:
 Docker build
 Health test
 ECR image push
+ECS task-definition rendering
 ECS task-definition registration
 ECS service update
 ECS service stabilization
 ```
 
-The deployment stages are handled by CodePipeline using the ECS deployment configuration after the CodeBuild stage completes successfully.
+CodeBuild performs these deployment operations after the application image passes the local health test.
 
 ---
 
