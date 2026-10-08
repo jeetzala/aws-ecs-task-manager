@@ -371,7 +371,7 @@ The build process:
 4. Test the `/health` endpoint
 5. Stop the test container
 6. Push the image to Amazon ECR
-7. Render the ECS task definition with the new image and build version
+7. Render the ECS task definition
 8. Register a new ECS task-definition revision
 9. Update the ECS service
 10. Wait for the ECS service to become stable
@@ -921,7 +921,7 @@ ECS service update
 ECS service stabilization
 ```
 
-CodeBuild performs these deployment operations after the application image passes the local health test.
+CodeBuild performs these build and deployment operations after the source stage is triggered through CodePipeline.
 
 ---
 
